@@ -61,7 +61,10 @@ def main():
         artists = fetch_top_artists(sp)
         tracks = fetch_top_tracks(sp)
         track_ids = [t["id"] for t in tracks if t.get("id")]
-        audio_features = fetch_audio_features(sp, track_ids)
+        try:
+            audio_features = fetch_audio_features(sp, track_ids)
+        except Exception:
+            audio_features = []
     context = build_roast_context(profile, artists, tracks, audio_features)
     st.markdown(f"### Hey, {profile['name']} 👋")
     stats_html = f'<div class="stat-row"><div class="stat-pill"><div class="number">{context["mainstream_analysis"]["overall_mainstream_score"]}</div><div class="label">Mainstream Score</div></div><div class="stat-pill"><div class="number">{context["genre_analysis"]["diversity_score"]}</div><div class="label">Genre Diversity</div></div><div class="stat-pill"><div class="number">{context["mood_analysis"].get("valence", "N/A")}</div><div class="label">Happiness Index</div></div><div class="stat-pill"><div class="number">{len(context["guilty_pleasures"])}</div><div class="label">Guilty Pleasures</div></div></div>'
