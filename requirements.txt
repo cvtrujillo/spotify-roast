@@ -1,0 +1,94 @@
+"""
+AI Roaster — sends your listening analysis to Claude and gets emotionally destroyed.
+"""
+
+import anthropic
+import json
+
+
+ROAST_SYSTEM_PROMPT = """You are a brutally funny music critic and comedian who roasts people's 
+Spotify listening habits. Your style is:
+
+- Specific: reference actual artist names, genres, and tracks from the data
+- Sharp but not cruel: funny > mean. Think roast, not bullying
+- Observational: find the contradictions and patterns that are hilarious
+- Pop culture references: compare their taste to funny archetypes
+- Structure: open with a devastating one-liner, then go through their data, close with a backhanded compliment
+
+Keep it to 4-6 paragraphs. Make it feel personalized — generic roasts are boring.
+Write in a mix of English and Spanish if the user's country suggests they speak Spanish.
+Use emoji sparingly but effectively."""
+
+
+def generate_roast(api_key: str, context: dict) -> str:
+    """Send listening analysis to Claude and get a personalized roast."""
+    client = anthropic.Anthropic(api_key=api_key)
+
+    user_prompt = f"""Roast this person's Spotify listening habits based on the following data:
+
+**User:** {context['user'].get('name', 'Anonymous')} from {context['user'].get('country', 'somewhere')}
+
+**Top Artists:** {', '.join(context['top_artists'])}
+
+**Top Tracks:** {', '.join(context['top_tracks'])}
+
+**Genre Analysis:**
+- Top genres: {json.dumps(context['genre_analysis']['top_genres'])}
+- Diversity score: {context['genre_analysis']['diversity_score']} ({context['genre_analysis']['diversity_label']})
+
+**How Mainstream They Are:**
+- Score: {context['mainstream_analysis']['overall_mainstream_score']}/100
+- Label: {context['mainstream_analysis']['label']}
+
+**Artist Obsession Level:**
+- Most played artist: {context['loyalty_analysis']['top_obsession']}
+- Obsession level: {context['loyalty_analysis']['obsession_level']}
+
+**Mood Analysis:**
+- Valence (happiness): {context['mood_analysis'].get('valence', 'N/A')}
+- Energy: {context['mood_analysis'].get('energy', 'N/A')}
+- Danceability: {context['mood_analysis'].get('danceability', 'N/A')}
+- Mood label: {context['mood_analysis'].get('mood_label', 'Unknown')}
+
+**Guilty Pleasures (tracks that don't fit their vibe):**
+{chr(10).join('- ' + g for g in context['guilty_pleasures']) if context['guilty_pleasures'] else '- None detected (which is suspicious in itself)'}
+
+Now roast them. Be specific. Be funny. Be devastating."""
+
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1200,
+        system=ROAST_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+
+    return message.content[0].text
+
+
+def generate_roast_title(context: dict) -> str:
+    """Generate a funny title based on their top genre."""
+    top_genre = (
+        context["genre_analysis"]["top_genres"][0]["genre"]
+        if context["genre_analysis"]["top_genres"]
+        else "music"
+    )
+    mood = context["mood_analysis"].get("mood_label", "")
+
+    titles = {
+        "pop": "🎤 Certified Basic: A Pop Intervention",
+        "rock": "🎸 Still Stuck in a Guitar Solo",
+        "hip hop": "🔥 Rapper Adjacent: The Roast",
+        "reggaeton": "💃 Perreo Intenso: Tu Vida en Spotify",
+        "latin": "🌎 Latino Heat: A Musical Diagnosis",
+        "indie": "🎭 Too Cool for Spotify (But Here Anyway)",
+        "electronic": "🎧 DJ Nobody Asked For",
+        "r&b": "💜 Smooth Operator or Cry Session?",
+        "metal": "🤘 Angry About Everything: The Playlist",
+        "k-pop": "💖 Stan Account Detected",
+    }
+
+    for key, title in titles.items():
+        if key in top_genre.lower():
+            return title
+
+    return f"🎵 Your Taste in {top_genre.title()}: A Roast"
