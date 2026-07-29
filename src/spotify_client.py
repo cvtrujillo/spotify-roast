@@ -20,7 +20,7 @@ def fetch_top_artists(sp, limit=20, time_range="medium_term"):
         {
             "name": a["name"],
             "genres": a.get("genres", []),
-            "popularity": a["popularity"],
+            "popularity": a.get("popularity", 0),
             "image": a["images"][0]["url"] if a.get("images") else None,
         }
         for a in results.get("items", [])
@@ -34,7 +34,7 @@ def fetch_top_tracks(sp, limit=30, time_range="medium_term"):
             "name": t["name"],
             "artist": t["artists"][0]["name"] if t.get("artists") else "Unknown",
             "album": t.get("album", {}).get("name", "Unknown"),
-            "popularity": t["popularity"],
+            "popularity": t.get("popularity", 0),
             "id": t["id"],
         }
         for t in results.get("items", [])
