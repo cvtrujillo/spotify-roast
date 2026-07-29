@@ -8,10 +8,10 @@ from src.roaster import generate_roast, generate_roast_title
 
 load_dotenv()
 
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "")
-SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI", "http://localhost:8501/callback")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+SPOTIFY_CLIENT_ID = st.secrets.get("SPOTIFY_CLIENT_ID", os.getenv("SPOTIFY_CLIENT_ID", ""))
+SPOTIFY_CLIENT_SECRET = st.secrets.get("SPOTIFY_CLIENT_SECRET", os.getenv("SPOTIFY_CLIENT_SECRET", ""))
+SPOTIFY_REDIRECT_URI = st.secrets.get("SPOTIFY_REDIRECT_URI", os.getenv("SPOTIFY_REDIRECT_URI", "http://localhost:8501/callback"))
+ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY", ""))
 
 st.set_page_config(page_title="Spotify Roast AI", page_icon="🎵", layout="centered")
 
@@ -34,12 +34,19 @@ def main():
     if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, ANTHROPIC_API_KEY]):
         st.error("Missing API keys. Check your .env file or Streamlit Secrets.")
         return
-    auth_manager = get_auth_manager(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI)
+    auth_manager = get_auth_manager(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI, cache_path="/tmp/.spotify_cache")
     query_params = st.query_params
     auth_code = query_params.get("code")
     if auth_code and "token_info" not in st.session_state:
-        token_info = auth_manager.get_access_token(auth_code)
-        st.session_state["token_info"] = token_info
+        try:
+            token_info = auth_manager.get_access_token(auth_code, as_dict=True)
+            st.session_state["token_info"] = token_info
+            st.query_params.clear()
+            st.rerun()
+        except Exception:
+            st.error("Auth failed. Please try connecting again.")
+            st.query_params.clear()
+            return
     if "token_info" not in st.session_state:
         auth_url = auth_manager.get_authorize_url()
         st.markdown("---")
